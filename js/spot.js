@@ -3,22 +3,33 @@
  */
 
 function Spot(i, j) {
+    // Poids théorique total du spot par la route la plus courte du début à la fin
     this.f = 0;
+    // Poids réel du spot par la route la plus courte depuis le début
     this.g = 0;
+    // Poids estimé du spot par la route la plus courte jusqu'a la fin
     this.h = 0;
 
     this.i = i;
     this.j = j;
 
+    this.wallProbabilty = 0.2;
+    this.isWall = false;
+
     this.neighbors = [];
     this.previous;
 
-    this.show = function (color) {
+    this.isWall = ( random()>this.wallProbabilty ) ? false:true;
+
+    this.show = function (color, strokeW = 1) {
         fill(color);
         // La couleur du contour
         stroke(0);
+        if(this.isWall) {
+          strokeW = min(w,h)/3;
+        }
         // L'épaisseur du contour (px)
-        strokeWeight(1);
+        strokeWeight(strokeW);
         // On set les dimensions du rectangle
         rect(this.i * w, this.j * h, w, h);
     };
@@ -28,12 +39,12 @@ function Spot(i, j) {
         // DIRECTS
         this.addDirectNeighbors(grid);
         // DIAGONNALES
-        this.addDiagonalNeighbors(grid);
+        // this.addDiagonalNeighbors(grid);
     };
 
     // Ajouts des voisins (a une distance de 1)
     this.setNeighbors = function (grid, di, dj) {
-        if(!this.isOnEdge(di, dj)) {
+        if(!this.isOnEdge(di, dj) && !this.isWall) {
             this.neighbors.push(grid[this.i + di] [this.j + dj]);
         }
     };
