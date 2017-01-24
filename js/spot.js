@@ -13,7 +13,7 @@ function Spot(i, j) {
     this.i = i;
     this.j = j;
 
-    this.wallProbabilty = 0.2;
+    this.wallProbabilty = 0.45;
     this.isWall = false;
 
     this.neighbors = [];
@@ -21,17 +21,16 @@ function Spot(i, j) {
 
     this.isWall = ( random()>this.wallProbabilty ) ? false:true;
 
-    this.show = function (color, strokeW = 1) {
-        fill(color);
+    this.show = function (pColor, strokeW = 0) {
+
+        fill(pColor);
         // La couleur du contour
         stroke(0);
-        if(this.isWall) {
-          strokeW = min(w,h)/3;
-        }
+        // blendMode(MULTIPLY); //https://p5js.org/reference/#/p5/blendMode
         // L'épaisseur du contour (px)
         strokeWeight(strokeW);
         // On set les dimensions du rectangle
-        rect(this.i * w, this.j * h, w, h);
+        rect(this.i * w, this.j * h, w+1, h+1);
     };
 
     // On ajoute tout les voisins possibles
@@ -39,13 +38,19 @@ function Spot(i, j) {
         // DIRECTS
         this.addDirectNeighbors(grid);
         // DIAGONNALES
-        // this.addDiagonalNeighbors(grid);
+        this.addDiagonalNeighbors(grid);
     };
 
     // Ajouts des voisins (a une distance de 1)
     this.setNeighbors = function (grid, di, dj) {
-        if(!this.isOnEdge(di, dj) && !this.isWall) {
-            this.neighbors.push(grid[this.i + di] [this.j + dj]);
+      var potentialNeighbor;
+      // On n'ajoute pas les cases en dehors de la grid
+        if(!this.isOnEdge(di, dj)) {
+          potentialNeighbor = grid[this.i + di] [this.j + dj];
+          // On n'ajoute pas les murs
+          if (!potentialNeighbor.isWall) {
+            this.neighbors.push(potentialNeighbor);
+          }
         }
     };
 
@@ -81,7 +86,7 @@ function Spot(i, j) {
     };
 
     this.addDirectNeighbors = function (grid) {
-            this.setNeighbors(grid, 1, 0);
+            this.setNeighbors(grid, 1, 0); //
             this.setNeighbors(grid, 0, 1);
             this.setNeighbors(grid, -1, 0);
             this.setNeighbors(grid, 0, -1);

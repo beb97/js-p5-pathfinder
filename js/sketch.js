@@ -4,14 +4,14 @@
 // https://www.youtube.com/watch?v=aKYlikFAV4k
 
 // Nombre de lignes et colonnes.
-var cols = 60;
-var rows = 60;
+var cols = 40;
+var rows = 40;
 
 var cWidth = 600;
 var cHeight = 600;
 
-var endI = 30-1;
-var endJ = 30-1;
+var endI = cols-1;
+var endJ = rows-1;
 
 var startI = 0;
 var startJ = 0;
@@ -26,8 +26,10 @@ var openSet = new Array();
 var closedSet = new Array();
 // La liste des solutions
 var path = new Array();
+// Le spot actuel
+var current;
 // L'état en cas de blocage
-var hasSolution = true;
+var hasSolution = false;
 
 
 // Le point de départ de recherche
@@ -62,6 +64,13 @@ function setup() {
 
         }
     }
+    // Définition des points départs et arrivée
+    start = grid[startI][startJ];
+    // end = grid[cols - 1][rows - 1];
+    end = grid[endI][endJ];
+    // debut et fin ne sont pas des walls
+    start.isWall = false;
+    end.isWall = false;
 
     // Crrer les voisins des spots
     for (var i = 0; i < cols; i++) {
@@ -70,93 +79,56 @@ function setup() {
         }
     }
 
-    // Définition des points départs et arrivée
-    start = grid[startI][startJ];
-    // end = grid[cols - 1][rows - 1];
-    end = grid[endI][endJ];
-
-    start.isWall = false;
-    end.isWall = false;
-
-    console.log(grid);
+    // Definition du current
     openSet.push(start);
-
+    current = start;
 }
 
 // La boucle P5
 // While (true)
 function draw() {
 
-    background(0);
-
     // On parcours les éléments de l'openSet (liste des spots à analyser),
     // Tant qu'on a pas atteint l'arrivée et qu'il existe toujours des éléments dans l'openSet
     // Si l'openSet est vide et que l'on n'a pas atteint l'arrivée, il n'existe pas de chemin.
 
-    if (openSet.length > 0) {
-        var winnerIndex = 0;
+    if (openSet.length > 0 && !isEndReached()) {
         // On parcous l'openSet pour trouver le "spot" de poids 'f' le plus faible.
         // On éxécute l'algorithme en utilisant le spot de poids le plus faible.
-        winnerIndex = findWinnerIndex(winnerIndex);
-
-        // Si le spot current est l'arrivée, c'est que nous sommes arrivée !
-        checkEnding(openSet[winnerIndex]);
+        current = findWinner();
 
         // Sinon, nous ne sommes pas arrivés, et nous devons continuer a parcourir le graphe.
 
         // On calcule maintenant l'open list les nouveaux points à analyser. C'est à dire :
         // Les voisins directs (si ils ne sont pas DEJA dans la liste des points à analyser)
         // Si les voisins y sont deja, on verifie si le chemin courrant n'est psa plus court que l'ancien existant
-        generatePath(openSet[winnerIndex]);
+        generatePath();
 
         // Nous pouvons donc retirer le point acutel de la liste des points à analyser
-        removeFromArray(openSet, openSet[winnerIndex]);
+        removeFromArray(openSet, current);
         // Et l'ajouter dans la liste des points déjà traités
-        closedSet.push(openSet[winnerIndex]);
-
-        renderGraphism(winnerIndex);
+        closedSet.push(current);
 
     } else {
-
-        stopOnfaillure();
-        renderGraphism(winnerIndex);
+        // Jeu fini
+        console.log('FINI !' );
+        console.log('Un chemin est trouvé ? ', hasSolution);
+        noLoop();
     }
+    renderGraphism();
 
 
 
 } // FIN  DU DRAW() LOOP
 
-function stopOnfaillure() {
-  // No solution
-  console.log('DONE:NO SOLUTION');
-  hasSolution = false;
-  noLoop();
-}
 
-function renderGraphism() {
-  // Dessiner toutes les cases du jeu
-  drawGrid();
-
-  // if (!hasSolution) {
-    drawClosedSet();
-    drawOpenSet();
-// }
-
-  if (hasSolution) {
-  //  retrievePath(winnerIndex);
-  }
-
-  // Dessiner le chemin le plus court
-  drawPath();
-  drawStartAndEnd();
-}
 
 // Récupération du chemin le plus court
 // On ouvre un curseur qui part du spot acutel
 // Et on remonte la liste des ancetres,
 // Tant que le spot a un previous
-function retrievePath(winnerIndex) {
-  var temp = openSet[winnerIndex];
+function retrievePath() {
+  var temp = current;
   // On reset l'ancien chemin le plus court
   path = [];
   // Qui est le début (ou plutot fin) du chemin le plus court
@@ -169,70 +141,94 @@ function retrievePath(winnerIndex) {
     }
 }
 
-function checkEnding(winner) {
-  if(winner === end ) {
-      // Félicitation
-      console.log('DONE');
-      noLoop();
+function isEndReached() {
+  var isEndReached = false;
+  if(current === end ) {
+      isEndReached = true;
+      hasSolution = true;
   }
+  return isEndReached;
 }
 
-function findWinnerIndex(winner) {
+function findWinner() {
+  var winnerIndex = 0;
   for (var i = 0; i < openSet.length; i++) {
       // On garde l'index du spot de poids le plus faible
-      if(openSet[i].f < openSet[winner].f) {
-          winner = i;
+      if(openSet[i].f < openSet[winnerIndex].f) {
+          winnerIndex = i;
       }
   }
-  return winner;
+  return openSet[winnerIndex];
 }
 
-function generatePath(current) {
+function generatePath() {
+  // On parcours les voisins du sport courant
   for ( var i = 0; i< current.neighbors.length;i++ ) {
-
-      // Si le voisin n'est pas encore dans le closedSet (listes des spots déjà traités)
-      // Alors on devra s'assurer qu'il sera dans la liste des spots à traiter.
-      if(!closedSet.includes( current.neighbors[i])) {
-
-          // On calcul le poids de la route vers ce voisin.
-          var tempWeight = calculWeight(current, current.neighbors[i]);
-
-          // La distance augmente donc du delta;
-          var tempG = current.g + tempWeight;
-
-          // Flag pour éventuel nouveau chemin
-          var newPath = false;
-          // Maintenant, on vérifie que le voisin n'est pas déjà dans la liste à traiter
-          if (openSet.includes( current.neighbors[i] )) {
-              // Si le voisin est deja dans l'openSet mais que la nouvelle distance est plus courte.
-              if (tempG < current.neighbors[i].g) {
-                // Nouveau chemin plus court
-                newPath = true;
-              }
-
-          } else {
-              // Nouveau chemin
-              newPath = true;
-              // Si le voisin n'était pas dans l'openSet
-              // On ajoute ce voisin à l'openSET
-              openSet.push( current.neighbors[i] );
-          }
-
-          if(newPath) {
-            // On ajoute son nouveau poids
-            current.neighbors[i].g = tempG;
-            // On calcul le poids du chemin restant entre le voisin et la fin, selon un algo heuristique
-            current.neighbors[i].h = heuristic(current.neighbors[i], end);
-            // On calcul le poids total du voisin : cout acutel réel + cout restant théorique (heuristique)
-            current.neighbors[i].f = current.neighbors[i].h + current.neighbors[i].g;
-
-            // On stocke dans le voisin ce noeud courant comme étant son parent/previous
-            current.neighbors[i].previous = current;
-          }
-
-          console.log(current.f,current.g,current.h);
-      }
+      updateNeighbor(current.neighbors[i]);
   }
+}
+
+function updateNeighbor(neighbor) {
+// Si le voisin n'est pas encore dans le closedSet (listes des spots déjà traités)
+// Alors on devra s'assurer qu'il sera dans la liste des spots à traiter.
+  if(!closedSet.includes( neighbor )) {
+  // On calcul le poids de la route vers ce voisin.
+    var tempWeight = calculWeight(current, neighbor);
+
+    // La distance augmente donc du delta;
+    var tempG = current.g + tempWeight;
+
+    // Flag pour éventuel nouveau chemin
+    var newPath = false;
+    // Maintenant, on vérifie que le voisin n'est pas déjà dans la liste à traiter
+    if (openSet.includes( neighbor )) { // Le voisin est deja dans l'openSet
+        //  Mais la nouvelle distance est plus courte.
+        if (tempG < neighbor.g) {
+          // Nouveau chemin plus court
+          newPath = true;
+        }
+    } else { // Le voisin n'est pas deja dans l'openSet
+        // Si le voisin n'était pas dans l'openSet
+        // On ajoute ce voisin à l'openSET
+        openSet.push( neighbor );
+        // Nouveau chemin
+        newPath = true;
+    }
+
+    if(newPath) {
+      // On ajoute son nouveau poids
+      neighbor.g = tempG;
+      // On calcul le poids du chemin restant entre le voisin et la fin, selon un algo heuristique
+      neighbor.h = heuristic(neighbor, end);
+      // On calcul le poids total du voisin : cout acutel réel + cout restant théorique (heuristique)
+      neighbor.f = neighbor.h + neighbor.g;
+
+      // On stocke dans le voisin ce noeud courant comme étant son parent/previous
+      neighbor.previous = current;
+    }
+  }
+}
+
+function renderGraphism() {
+
+  background(255);
+  // Dessiner toutes les cases du jeu
+  // drawGrid();
+  drawWall();
+
+  // if (!hasSolution) {
+    drawClosedSet();
+// }
+
+  if (hasSolution) {
+   retrievePath();
+ } else {
+   drawOpenSet();
+ }
+
+  // Dessiner le chemin le plus court
+  drawStartAndEnd();
+  drawPath();
 }
 
 function drawGrid() {
@@ -242,12 +238,30 @@ function drawGrid() {
       }
   }
 }
+function drawWall() {
+  for (var i = 0; i < cols; i++) {
+      for (var j = 0; j < rows; j++) {
+        if(grid[i][j].isWall) {
+            grid[i][j].show(color(125));
+          }
+      }
+  }
+}
 
 function drawPath() {
+  // console.log('drawPath');
+  // noFill();
+  stroke(0,0,255);
+  strokeWeight(2);
+  noFill();
+  beginShape();
   for (var i = 0; i < path.length; i++) {
-      pColor = (hasSolution)?'rgba(0,0,255,0.5)':'rgba(255,0,0,0.5)';
-      path[i].show(color(pColor));
+      x = (path[i].i * w) + w/2;
+      y = (path[i].j * h) + h/2;
+      vertex(x, y);
   }
+  endShape();
+
 }
 
 function drawStartAndEnd() {
